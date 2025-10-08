@@ -71,12 +71,53 @@ const activeRooms = new Map<string, { userSocketId: string, adminSocketId: strin
 
 io.on('connection', (socket: Socket) => {
   console.log('Socket connected', socket.id);
+////////
+ // adjust path as needed
 
+socket.on('registerAsAdmin', async ({ adminId, adminName } = {}) => {
+  socket.data.isAdmin = true;
+  socket.data.adminId = adminId || `admin-${socket.id}`;
+  socket.data.adminName = adminName || 'Admin';
+
+  try {
+    // 1. Get all trackingIds from pending chats
+    const allPending = Array.from(pendingChats.entries());
+    const trackingIds = allPending.map(([_, val]) => val.trackingId);
+
+    // 2. Find rides that belong to this admin
+    const rides = await Ride.find({
+      _id: { $in: trackingIds },
+      adminId: socket.data.adminId
+    }).select('_id'); // only need the IDs
+
+    const validTrackingIds = new Set(
+  rides.map(r => (r._id as mongoose.Types.ObjectId).toString())
+);
+
+    // 3. Filter pending chats accordingly
+    const filteredList = allPending
+      .filter(([_, val]) => validTrackingIds.has(val.trackingId.toString()))
+      .map(([userId, val]) => ({
+        userId,
+        userName: val.userName || userId,
+        trackingId: val.trackingId
+      }));
+
+    // 4. Send to admin
+    socket.emit('pendingList', filteredList);
+
+  } catch (err) {
+    console.error('Error filtering pending chats for admin:', err);
+    socket.emit('pendingList', []); // fallback
+  }
+});
+
+{/*
   socket.on('registerAsAdmin', ({ adminId, adminName }: { adminId?: string, adminName?: string } = {}) => {
     socket.data.isAdmin = true;
     socket.data.adminId = adminId || `admin-${socket.id}`;
     socket.data.adminName = adminName || 'Admin';
-
+    
     const list = Array.from(pendingChats.entries()).map(([userId, val]) => ({
       userId,
       userName: val.userName || userId,
@@ -84,7 +125,7 @@ io.on('connection', (socket: Socket) => {
     }));
     socket.emit('pendingList', list);
   });
-
+*/}////////
   socket.on('chatRequest', async ({ userId, userName, trackingId }: { userId?: string, userName?: string, trackingId?: string } = {}) => {
     if (!userId || !trackingId) return;
     console.log('Chat request from', userId, userName);
