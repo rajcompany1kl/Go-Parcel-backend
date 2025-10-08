@@ -133,11 +133,7 @@ export const assign = async (req: Request, res: Response) => {
             route
         } = req.body;
 
-        const availableDriver: IDriverUser | null = await DriverUser.findOneAndUpdate(
-            { status: DriverRideStatus.AVAILABLE },
-            { status: DriverRideStatus.NOT_AVAILABLE }, // Mark driver as unavailable
-            { new: true }
-        );
+        const availableDriver: IDriverUser | null = await DriverUser.findOne({ status: DriverRideStatus.AVAILABLE });
 
         if (!availableDriver) {
             return res.status(404).json({ message: 'No available drivers found' });
