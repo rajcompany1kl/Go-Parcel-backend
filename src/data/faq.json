@@ -1,0 +1,66 @@
+[
+  {
+    "question": "How do I book a delivery?",
+    "answer": "Open the app, tap on 'New Delivery', enter pickup and drop-off locations, parcel details, and confirm the booking."
+  },
+  {
+    "question": "Can I schedule a delivery for later?",
+    "answer": "Yes, you can choose 'Schedule for later' during the booking process and select a preferred date and time."
+  },
+  {
+    "question": "How do I track my parcel?",
+    "answer": "Go to 'My Deliveries', select the ongoing delivery, and you'll see real-time tracking of your parcel."
+  },
+  {
+    "question": "What should I do if the delivery person is late?",
+    "answer": "Please wait for 10–15 minutes. If they haven't arrived, contact support through 'Help' → 'Delivery Issues'."
+  },
+  {
+    "question": "How do I cancel a delivery?",
+    "answer": "Go to 'My Deliveries', select the active booking, and tap 'Cancel Delivery'. Cancellation fees may apply based on timing."
+  },
+  {
+    "question": "What items are not allowed for delivery?",
+    "answer": "We do not allow delivery of illegal items, perishable goods, cash, valuables, or hazardous materials. Refer to our terms for the full list."
+  },
+  {
+    "question": "Can I change the drop-off address after booking?",
+    "answer": "Drop-off address cannot be changed after the delivery is picked up. You may cancel and rebook before pickup."
+  },
+  {
+    "question": "What are the delivery charges?",
+    "answer": "Delivery charges depend on distance, parcel size, and time of booking. The fare is shown before confirmation."
+  },
+  {
+    "question": "How can I pay for my delivery?",
+    "answer": "We accept UPI, credit/debit cards, net banking, and wallet payments. You can choose your preferred method during checkout."
+  },
+  {
+    "question": "Is my parcel insured?",
+    "answer": "Basic insurance is included for all deliveries. For high-value items, you can opt for additional insurance during booking."
+  },
+  {
+    "question": "How do I contact the delivery person?",
+    "answer": "Once your delivery is assigned, you’ll see a 'Call' or 'Message' option on the tracking screen."
+  },
+  {
+    "question": "What if the delivery person asks for extra money?",
+    "answer": "All charges are included in the app. Do not pay extra. Report such issues through Help → Report a Problem."
+  },
+  {
+    "question": "Can I send multiple parcels in one booking?",
+    "answer": "Currently, each booking supports one parcel. For multiple parcels, create separate bookings or contact support for bulk delivery options."
+  },
+  {
+    "question": "How do I update my profile or address?",
+    "answer": "Go to 'Profile' → 'Edit Profile' to update your name, contact details, or saved addresses."
+  },
+  {
+    "question": "How do I reset my password?",
+    "answer": "Go to 'Settings' → 'Account' → 'Reset Password'. You'll receive an email with reset instructions."
+  },
+  {
+    "question": "How can I contact support?",
+    "answer": "Go to 'Help' → 'Contact Us' or email us at support@yourapp.com with your booking ID."
+  }
+]

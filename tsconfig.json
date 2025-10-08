@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    /* Base Options */
+    "target": "ES2022",                // The JavaScript version to compile to. Modern Node.js supports recent features.
+    "module": "NodeNext",               // The module system. 'NodeNext' is best for modern Node.js projects that use ES Modules.
+    "moduleResolution": "NodeNext",     // How TypeScript finds modules. This complements the 'module' setting.
+    "esModuleInterop": true,            // Allows better compatibility between CommonJS and ES Modules.
+    "strict": true,                     // Enables all strict type-checking options. HIGHLY recommended for new projects.
+
+    /* Output Options */
+    "outDir": "./dist",                 // Where to output the compiled JavaScript files.
+    "rootDir": "./src",                 // The root directory of your source files.
+
+    /* Advanced Options */
+    "forceConsistentCasingInFileNames": true, // Disallows imports with inconsistent casing (e.g., 'File' vs 'file').
+    "skipLibCheck": true                // Skips type checking of declaration files (.d.ts), speeding up compilation.
+  },
+  "include": ["src/**/*"],              // Specifies which files TypeScript should compile.
+  "exclude": ["node_modules"]           // Specifies files to exclude from compilation.
+}
