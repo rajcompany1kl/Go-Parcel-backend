@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import userRoutes from './routes/userRoutes';
 import driverRoutes from './routes/driverRoutes';
 import Ride from './models/Rides';
+import DriverUser from './models/DriverUserAccounts';
 import cookieParser from 'cookie-parser';
 import http from 'http';
 import { Server, Socket } from 'socket.io';
@@ -71,48 +72,48 @@ const activeRooms = new Map<string, { userSocketId: string, adminSocketId: strin
 
 io.on('connection', (socket: Socket) => {
   console.log('Socket connected', socket.id);
-////////
- // adjust path as needed
+  ////////
+  // adjust path as needed
 
-socket.on('registerAsAdmin', async ({ adminId, adminName } = {}) => {
-  socket.data.isAdmin = true;
-  socket.data.adminId = adminId || `admin-${socket.id}`;
-  socket.data.adminName = adminName || 'Admin';
+  socket.on('registerAsAdmin', async ({ adminId, adminName } = {}) => {
+    socket.data.isAdmin = true;
+    socket.data.adminId = adminId || `admin-${socket.id}`;
+    socket.data.adminName = adminName || 'Admin';
 
-  try {
-    // 1. Get all trackingIds from pending chats
-    const allPending = Array.from(pendingChats.entries());
-    const trackingIds = allPending.map(([_, val]) => val.trackingId);
+    try {
+      // 1. Get all trackingIds from pending chats
+      const allPending = Array.from(pendingChats.entries());
+      const trackingIds = allPending.map(([_, val]) => val.trackingId);
 
-    // 2. Find rides that belong to this admin
-    const rides = await Ride.find({
-      _id: { $in: trackingIds },
-      adminId: socket.data.adminId
-    }).select('_id'); // only need the IDs
+      // 2. Find rides that belong to this admin
+      const rides = await Ride.find({
+        _id: { $in: trackingIds },
+        adminId: socket.data.adminId
+      }).select('_id'); // only need the IDs
 
-    const validTrackingIds = new Set(
-  rides.map(r => (r._id as mongoose.Types.ObjectId).toString())
-);
+      const validTrackingIds = new Set(
+        rides.map(r => (r._id as mongoose.Types.ObjectId).toString())
+      );
 
-    // 3. Filter pending chats accordingly
-    const filteredList = allPending
-      .filter(([_, val]) => validTrackingIds.has(val.trackingId.toString()))
-      .map(([userId, val]) => ({
-        userId,
-        userName: val.userName || userId,
-        trackingId: val.trackingId
-      }));
+      // 3. Filter pending chats accordingly
+      const filteredList = allPending
+        .filter(([_, val]) => validTrackingIds.has(val.trackingId.toString()))
+        .map(([userId, val]) => ({
+          userId,
+          userName: val.userName || userId,
+          trackingId: val.trackingId
+        }));
 
-    // 4. Send to admin
-    socket.emit('pendingList', filteredList);
+      // 4. Send to admin
+      socket.emit('pendingList', filteredList);
 
-  } catch (err) {
-    console.error('Error filtering pending chats for admin:', err);
-    socket.emit('pendingList', []); // fallback
-  }
-});
+    } catch (err) {
+      console.error('Error filtering pending chats for admin:', err);
+      socket.emit('pendingList', []); // fallback
+    }
+  });
 
-{/*
+  {/*
   socket.on('registerAsAdmin', ({ adminId, adminName }: { adminId?: string, adminName?: string } = {}) => {
     socket.data.isAdmin = true;
     socket.data.adminId = adminId || `admin-${socket.id}`;
@@ -197,7 +198,7 @@ socket.on('registerAsAdmin', async ({ adminId, adminName } = {}) => {
 
   socket.on('sendMessage', ({ roomId, sender, text }: { roomId?: string, sender?: string, text?: string } = {}) => {
     if (roomId) {
-        io.to(roomId).emit('receiveMessage', { sender, text, ts: Date.now() });
+      io.to(roomId).emit('receiveMessage', { sender, text, ts: Date.now() });
     }
   });
 
@@ -217,6 +218,45 @@ socket.on('registerAsAdmin', async ({ adminId, adminName } = {}) => {
       activeRooms.delete(roomId);
     }
   });
+
+  // driver socket handlers can go here
+  // Only drivers emit this event
+  socket.on('driver:location', async ({ driverId, lat, lng, ts }: { driverId: string, lat: number, lng: number, ts?: number }) => {
+    if (!driverId || typeof lat !== 'number' || typeof lng !== 'number') return;
+    console.log(`Received location from driver ${driverId}: (${lat}, ${lng}) at ${ts || Date.now()}`);
+    // Optional: save to MongoDB
+    try {
+      // Update the ride's last known location
+      const updatedRide = await Ride.updateMany(
+        { driverId },
+        { $set: { lastDriverLocation: { lat, lng, ts: ts || Date.now() } } }
+      );
+      if (!updatedRide) {
+        console.log("No ride found for driver:", driverId);
+      }
+      console.log("Updated Ride:", updatedRide);
+      // Update the driver's current location
+      await DriverUser.findByIdAndUpdate(driverId, {
+        $set: {
+          currentLoc: { lat, lng },
+          updatedAt: new Date()
+        }
+      });
+
+
+    } catch (err) {
+      console.error('Error saving driver location:', err);
+    }
+
+    // Broadcast only to admins
+    io.sockets.sockets.forEach(s => {
+      if (s.data?.isAdmin) {
+        s.emit('driver:locationa', { driverId, lat, lng, ts: ts || Date.now() });
+      }
+    });
+
+  });
+  //// driver socket handlers ends here
 
   socket.on('disconnect', () => {
     console.log('Socket disconnected', socket.id);
