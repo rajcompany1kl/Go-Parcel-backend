@@ -17,17 +17,17 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 8080;
 
-// Middleware
+
 app.use(cors({
   origin: 'http://localhost:5173',
   credentials: true
 }));
 
-app.use(express.json()); // parse JSON body
+app.use(express.json());
 app.use(cookieParser());
 app.use('/AdminUser', userRoutes);
 app.use('/DriverUser', driverRoutes);
-// Test route
+
 app.get('/', (req: Request, res: Response) => {
   res.send('MERN backend is running');
 });
@@ -39,8 +39,8 @@ app.post("/api/send-email", async (req: Request, res: Response) => {
     let transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
-        user: "rajcompany1kl@gmail.com", // Replace with your Gmail
-        pass: "tnni pgme ambt klll",   // Use App Password, not regular password
+        user: "rajcompany1kl@gmail.com", 
+        pass: "tnni pgme ambt klll",   
       },
     });
 
@@ -71,10 +71,7 @@ const pendingChats = new Map<string, { socketId: string, userName: string, track
 const activeRooms = new Map<string, { userSocketId: string, adminSocketId: string }>();
 
 io.on('connection', (socket: Socket) => {
-  console.log('Socket connected', socket.id);
-  ////////
-  // adjust path as needed
-
+ 
   socket.on('registerAsAdmin', async ({ adminId, adminName } = {}) => {
     socket.data.isAdmin = true;
     socket.data.adminId = adminId || `admin-${socket.id}`;
@@ -127,27 +124,22 @@ io.on('connection', (socket: Socket) => {
     socket.emit('pendingList', list);
   });
 */}////////
+
   socket.on('chatRequest', async ({ userId, userName, trackingId }: { userId?: string, userName?: string, trackingId?: string } = {}) => {
     if (!userId || !trackingId) return;
-    console.log('Chat request from', userId, userName);
+    
     trackingId = trackingId.trim()
     pendingChats.set(userId, { socketId: socket.id, userName: userName || userId, trackingId });
-    console.log('trackingId:', trackingId);
-    // trackingId corresponds to Ride._id
+    
     const ride = await Ride.findById(trackingId);
-    console.log('Looking for ride with ID:', trackingId);
-
-    console.log('Ride found:', ride);
 
     if (!ride) return;
 
     // Find which admin(s) are linked to this ride
     const targetAdminId = String(ride.adminId);
-    console.log('Target admin ID:', targetAdminId);
 
     io.sockets.sockets.forEach((s) => {
       if (s.data?.isAdmin && s.data.adminId === targetAdminId) {
-        console.log('Found matching admin socket:', s.id);
         s.emit('newChatRequest', { userId, userName: userName || userId, trackingId });
       }
     });
@@ -249,11 +241,9 @@ io.on('connection', (socket: Socket) => {
     }
 
     // Broadcast only to admins
-    io.sockets.sockets.forEach(s => {
-      if (s.data?.isAdmin) {
-        s.emit('driver:locationa', { driverId, lat, lng, ts: ts || Date.now() });
-      }
-    });
+   console.log(`Broadcasting driver location to ${io.sockets.sockets.size} sockets`);
+   io.emit('driver:location', { driverId, lat, lng, ts: ts || Date.now() });
+
 
   });
   //// driver socket handlers ends here
