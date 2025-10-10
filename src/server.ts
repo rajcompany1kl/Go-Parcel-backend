@@ -39,8 +39,8 @@ app.post("/api/send-email", async (req: Request, res: Response) => {
     let transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
-        user: "rajcompany1kl@gmail.com", 
-        pass: "tnni pgme ambt klll",   
+        user: "rajcompany1kl@gmail.com",
+        pass: "tnni pgme ambt klll",
       },
     });
 
@@ -71,7 +71,7 @@ const pendingChats = new Map<string, { socketId: string, userName: string, track
 const activeRooms = new Map<string, { userSocketId: string, adminSocketId: string }>();
 
 io.on('connection', (socket: Socket) => {
- 
+
   socket.on('registerAsAdmin', async ({ adminId, adminName } = {}) => {
     socket.data.isAdmin = true;
     socket.data.adminId = adminId || `admin-${socket.id}`;
@@ -110,27 +110,12 @@ io.on('connection', (socket: Socket) => {
     }
   });
 
-  {/*
-  socket.on('registerAsAdmin', ({ adminId, adminName }: { adminId?: string, adminName?: string } = {}) => {
-    socket.data.isAdmin = true;
-    socket.data.adminId = adminId || `admin-${socket.id}`;
-    socket.data.adminName = adminName || 'Admin';
-    
-    const list = Array.from(pendingChats.entries()).map(([userId, val]) => ({
-      userId,
-      userName: val.userName || userId,
-      trackingId: val.trackingId
-    }));
-    socket.emit('pendingList', list);
-  });
-*/}////////
-
   socket.on('chatRequest', async ({ userId, userName, trackingId }: { userId?: string, userName?: string, trackingId?: string } = {}) => {
     if (!userId || !trackingId) return;
-    
+
     trackingId = trackingId.trim()
     pendingChats.set(userId, { socketId: socket.id, userName: userName || userId, trackingId });
-    
+
     const ride = await Ride.findById(trackingId);
 
     if (!ride) return;
@@ -241,8 +226,8 @@ io.on('connection', (socket: Socket) => {
     }
 
     // Broadcast only to admins
-   console.log(`Broadcasting driver location to ${io.sockets.sockets.size} sockets`);
-   io.emit('driver:location', { driverId, lat, lng, ts: ts || Date.now() });
+    console.log(`Broadcasting driver location to ${io.sockets.sockets.size} sockets`);
+    io.emit('driver:location', { driverId, lat, lng, ts: ts || Date.now() });
 
 
   });
