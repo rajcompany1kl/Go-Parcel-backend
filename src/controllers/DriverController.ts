@@ -1,8 +1,9 @@
 import { Request, Response } from 'express';
-import DriverUserAccount, { IDriverUser } from '../models/DriverUserAccounts';
+import DriverUserAccount, { DriverRideStatus, IDriverUser } from '../models/DriverUserAccounts';
 import Ride from '../models/Rides';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import DriverUserAccounts from '../models/DriverUserAccounts';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key';
 
@@ -136,3 +137,17 @@ export const getRide = async (req: Request, res: Response) => {
         res.status(500).json({ message: 'Server error' });
     }
 };
+
+export const getAvailableDriver = async(req: Request, res: Response) => {
+    try {
+        const drivers = await DriverUserAccounts.find();
+        if(drivers.length > 0 ) {
+            res.status(200).json({ data: drivers.filter(driver => driver.status === DriverRideStatus.AVAILABLE)})
+        } else {
+            res.status(404).json({ message: 'No drivers are available at the moment' })
+        }
+    } catch (error) {
+        console.log("Error fetching drivers")
+        res.status(500).json({ message: error });
+    }
+}
