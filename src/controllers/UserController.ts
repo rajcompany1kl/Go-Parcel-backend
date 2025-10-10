@@ -122,6 +122,7 @@ export const assign = async (req: Request, res: Response) => {
     try {
         const {
             adminId,
+            driverId,
             rideStartAt,
             rideEndAt,
             isRideStarted,
@@ -133,15 +134,9 @@ export const assign = async (req: Request, res: Response) => {
             route
         } = req.body;
 
-        const availableDriver: IDriverUser | null = await DriverUser.findOne({ status: DriverRideStatus.AVAILABLE });
-
-        if (!availableDriver) {
-            return res.status(404).json({ message: 'No available drivers found' });
-        }
-
         const newRide: IRide = new Ride({
             adminId,
-            driverId: availableDriver.id,
+            driverId,
             rideStartAt,
             rideEndAt,
             isRideStarted,

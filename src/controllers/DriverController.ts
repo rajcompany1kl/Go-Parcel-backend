@@ -4,6 +4,7 @@ import Ride from '../models/Rides';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import DriverUserAccounts from '../models/DriverUserAccounts';
+import Rides from '../models/Rides';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key';
 
@@ -151,3 +152,19 @@ export const getAvailableDriver = async(req: Request, res: Response) => {
         res.status(500).json({ message: error });
     }
 }
+
+export const getDriverDelivery = async (req: Request, res: Response) => {
+    const driverId = req.params.driverId;
+    console.log('Fetching delivery for driverId:', driverId);
+    try {
+        const delivery = await Rides.findOne({ driverId });
+        if (!delivery) {
+            return res.status(404).json({ message: 'No delivery found for this driverId' });
+        }
+
+        res.status(200).json({ ride: delivery });
+    } catch (error) {
+        console.error('Error fetching delivery:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};

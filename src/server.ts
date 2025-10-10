@@ -40,7 +40,7 @@ app.post("/api/send-email", async (req: Request, res: Response) => {
       service: "gmail",
       auth: {
         user: "rajcompany1kl@gmail.com",
-        pass: "tnni pgme ambt klll",
+        pass: process.env.PASS,
       },
     });
 
