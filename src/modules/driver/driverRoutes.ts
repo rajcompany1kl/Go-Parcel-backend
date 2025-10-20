@@ -1,5 +1,6 @@
 import express from 'express';
-import { signup, login, logout, getRide, getAvailableDriver, getDriverDelivery } from '../controllers/DriverController';
+import {  getRide, getAvailableDriver, getDriverDelivery } from './DriverController';
+import { signup, login, logout } from './AuthController';
 
 const router = express.Router();
 
@@ -11,4 +12,4 @@ router.get('/getride/:trackingId', getRide);
 router.get('/availableDrivers',getAvailableDriver);
 router.get('/ride/:driverId',getDriverDelivery);
 
-export default router;
+export default router; 

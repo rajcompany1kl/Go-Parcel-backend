@@ -1,10 +1,8 @@
 import { Request, Response } from 'express';
-import DriverUserAccount, { DriverRideStatus, IDriverUser } from '../models/DriverUserAccounts';
-import Ride from '../models/Rides';
+import DriverUserAccount, { DriverRideStatus, IDriverUser } from './DriverUserAccounts';
+import Ride from '../ride/Rides';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import DriverUserAccounts from '../models/DriverUserAccounts';
-import Rides from '../models/Rides';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key';
 
@@ -135,36 +133,6 @@ export const getRide = async (req: Request, res: Response) => {
         res.status(200).json({ ride });
     } catch (error) {
         console.error('Error fetching rides:', error);
-        res.status(500).json({ message: 'Server error' });
-    }
-};
-
-export const getAvailableDriver = async(req: Request, res: Response) => {
-    try {
-        const drivers = await DriverUserAccounts.find();
-        if(drivers.length > 0 ) {
-            res.status(200).json({ data: drivers.filter(driver => driver.status === DriverRideStatus.AVAILABLE)})
-        } else {
-            res.status(404).json({ message: 'No drivers are available at the moment' })
-        }
-    } catch (error) {
-        console.log("Error fetching drivers")
-        res.status(500).json({ message: error });
-    }
-}
-
-export const getDriverDelivery = async (req: Request, res: Response) => {
-    const driverId = req.params.driverId;
-    console.log('Fetching delivery for driverId:', driverId);
-    try {
-        const delivery = await Rides.findOne({ driverId });
-        if (!delivery) {
-            return res.status(404).json({ message: 'No delivery found for this driverId' });
-        }
-
-        res.status(200).json({ ride: delivery });
-    } catch (error) {
-        console.error('Error fetching delivery:', error);
         res.status(500).json({ message: 'Server error' });
     }
 };

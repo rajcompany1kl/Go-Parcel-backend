@@ -1,274 +1,120 @@
-import express, { Request, Response } from 'express';
-import mongoose from 'mongoose';
-import cors from 'cors';
-import dotenv from 'dotenv';
-import userRoutes from './routes/userRoutes';
-import driverRoutes from './routes/driverRoutes';
-import Ride from './models/Rides';
-import DriverUser from './models/DriverUserAccounts';
-import cookieParser from 'cookie-parser';
-import http from 'http';
-import { Server, Socket } from 'socket.io';
-import faqRoutes from './routes/faq';
-import nodemailer from 'nodemailer'
+import http from "http";
+import { Server } from "socket.io";
+import mongoose from "mongoose";
+import dotenv from "dotenv";
+import app from "./app";
+import { connectDB } from "./config/db";
+import { initSocket } from "./services/socket.service";
+import axios from "axios";
 
 dotenv.config();
 
-const app = express();
 const PORT = process.env.PORT || 8080;
+const MONGO_URI = process.env.MONGO_URI as string;
 
-
-app.use(cors({
-  origin: 'http://localhost:5173',
-  credentials: true
-}));
-
-app.use(express.json());
-app.use(cookieParser());
-app.use('/AdminUser', userRoutes);
-app.use('/DriverUser', driverRoutes);
-
-app.get('/', (req: Request, res: Response) => {
-  res.send('MERN backend is running');
-});
-
-app.post("/api/send-email", async (req: Request, res: Response) => {
-  const { to, subject, text } = req.body;
-
-  try {
-    let transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: "rajcompany1kl@gmail.com",
-        pass: process.env.PASS,
-      },
-    });
-
-    await transporter.sendMail({
-      from: '"Delivery System" <rajcompany1kl@gmail.com>',
-      to,
-      subject,
-      text,
-    });
-
-    res.status(200).json({ message: "Email sent" });
-  } catch (err) {
-    console.error("Email send failed:", err);
-    res.status(500).json({ error: "Email failed to send" });
-  }
-});
-
-///// sockets
+if (!MONGO_URI) {
+  console.error("❌ MONGO_URI not found in .env");
+  process.exit(1);
+}
 
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: 'http://localhost:5173',
-    methods: ['GET', 'POST']
+    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    methods: ["GET", "POST"],
+  },
+});
+
+initSocket(io);
+
+connectDB(MONGO_URI).then(() => {
+  server.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+  });
+});
+
+////////////////
+
+
+app.get("/api/nominatim/search", async (req, res) => {
+  const { q } = req.query;
+
+  // 1️⃣ Validate query
+  if (!q) {
+    return res.status(400).json({ error: "Missing query parameter 'q'" });
+  }
+
+  try {
+    // 2️⃣ Call Nominatim safely
+    const response = await axios.get("https://nominatim.openstreetmap.org/search", {
+      params: {
+        format: "json",
+        addressdetails: 1,
+        limit: 6,
+        q,
+      },
+      headers: {
+        "User-Agent": "CommuteDeliveryApp/1.0 (rajcompany1kl@gmail.com)", // required
+        "Accept-Language": "en",
+      },
+      timeout: 10000, // safety timeout
+      validateStatus: (status) => status >= 200 && status < 500, // don't throw for 404/429
+    });
+
+    // 3️⃣ Handle rate limit or bad responses
+    if (response.status !== 200) {
+      console.error("Nominatim error:", response.status, response.data);
+      return res.status(response.status).json({
+        error: `Nominatim returned ${response.status}`,
+        details: response.data,
+      });
+    }
+
+    // 4️⃣ Send data back
+    res.json(response.data);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    console.error("Nominatim proxy failed:", errorMessage);
+    res.status(500).json({
+      error: "Failed to fetch from Nominatim",
+      message: errorMessage,
+    });
   }
 });
-const pendingChats = new Map<string, { socketId: string, userName: string, trackingId: string }>();
-const activeRooms = new Map<string, { userSocketId: string, adminSocketId: string }>();
 
-io.on('connection', (socket: Socket) => {
+app.get("/api/nominatim/reverse", async (req, res) => {
+  const { lat, lon } = req.query;
 
-  socket.on('registerAsAdmin', async ({ adminId, adminName } = {}) => {
-    socket.data.isAdmin = true;
-    socket.data.adminId = adminId || `admin-${socket.id}`;
-    socket.data.adminName = adminName || 'Admin';
+  if (!lat || !lon) {
+    return res.status(400).json({ error: "Missing latitude or longitude" });
+  }
 
-    try {
-      // 1. Get all trackingIds from pending chats
-      const allPending = Array.from(pendingChats.entries());
-      const trackingIds = allPending.map(([_, val]) => val.trackingId);
-
-      // 2. Find rides that belong to this admin
-      const rides = await Ride.find({
-        _id: { $in: trackingIds },
-        adminId: socket.data.adminId
-      }).select('_id'); // only need the IDs
-
-      const validTrackingIds = new Set(
-        rides.map(r => (r._id as mongoose.Types.ObjectId).toString())
-      );
-
-      // 3. Filter pending chats accordingly
-      const filteredList = allPending
-        .filter(([_, val]) => validTrackingIds.has(val.trackingId.toString()))
-        .map(([userId, val]) => ({
-          userId,
-          userName: val.userName || userId,
-          trackingId: val.trackingId
-        }));
-
-      // 4. Send to admin
-      socket.emit('pendingList', filteredList);
-
-    } catch (err) {
-      console.error('Error filtering pending chats for admin:', err);
-      socket.emit('pendingList', []); // fallback
-    }
-  });
-
-  socket.on('chatRequest', async ({ userId, userName, trackingId }: { userId?: string, userName?: string, trackingId?: string } = {}) => {
-    if (!userId || !trackingId) return;
-
-    trackingId = trackingId.trim()
-    pendingChats.set(userId, { socketId: socket.id, userName: userName || userId, trackingId });
-
-    const ride = await Ride.findById(trackingId);
-
-    if (!ride) return;
-
-    // Find which admin(s) are linked to this ride
-    const targetAdminId = String(ride.adminId);
-
-    io.sockets.sockets.forEach((s) => {
-      if (s.data?.isAdmin && s.data.adminId === targetAdminId) {
-        s.emit('newChatRequest', { userId, userName: userName || userId, trackingId });
-      }
+  try {
+    const response = await axios.get("https://nominatim.openstreetmap.org/reverse", {
+      params: { format: "json", lat, lon },
+      headers: {
+        "User-Agent": "CommuteDeliveryApp/1.0 (rajcompany1kl@gmail.com)",
+      },
+      timeout: 10000,
+      validateStatus: (status) => status >= 200 && status < 500,
     });
 
-    socket.emit('waitingForAdmin');
-  });
-
-  socket.on('acceptChat', ({ userId, adminId, adminName }: { userId?: string, adminId?: string, adminName?: string } = {}) => {
-    if (!userId) return;
-
-    const pending = pendingChats.get(userId);
-    if (!pending) {
-      socket.emit('acceptFailed', { reason: 'Request not available (maybe already accepted).' });
-      return;
-    }
-
-    const userSocketId = pending.socketId;
-    const userSocket = io.sockets.sockets.get(userSocketId);
-    if (!userSocket) {
-      socket.emit('acceptFailed', { reason: 'User disconnected.' });
-      pendingChats.delete(userId);
-
-      io.sockets.sockets.forEach((s) => {
-        if (s.data && s.data.isAdmin) s.emit('removePending', { userId });
+    if (response.status !== 200) {
+      console.error("Reverse lookup error:", response.status, response.data);
+      return res.status(response.status).json({
+        error: `Nominatim returned ${response.status}`,
+        details: response.data,
       });
-
-      return;
     }
 
-    const roomId = `${userId}-${adminId}-${Date.now()}`;
-    activeRooms.set(roomId, { userSocketId, adminSocketId: socket.id });
-
-    socket.join(roomId);
-    userSocket.join(roomId);
-
-    io.to(roomId).emit('chatStarted', {
-      roomId,
-      userId,
-      adminId,
-      adminName: adminName || socket.data.adminName || 'Admin'
+    res.json(response.data);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    console.error("Reverse proxy failed:", errorMessage);
+    res.status(500).json({
+      error: "Failed to fetch from Nominatim",
+      message: errorMessage,
     });
-
-    pendingChats.delete(userId);
-    io.sockets.sockets.forEach((s) => {
-      if (s.data && s.data.isAdmin) s.emit('removePending', { userId });
-    });
-  });
-
-  socket.on('sendMessage', ({ roomId, sender, text }: { roomId?: string, sender?: string, text?: string } = {}) => {
-    if (roomId) {
-      io.to(roomId).emit('receiveMessage', { sender, text, ts: Date.now() });
-    }
-  });
-
-  socket.on('endChat', ({ roomId, by }: { roomId?: string, by?: string } = {}) => {
-    if (!roomId) return;
-    const info = activeRooms.get(roomId);
-    if (info) {
-      io.to(roomId).emit('chatEnded', { roomId, by });
-
-      const clients = io.sockets.adapter.rooms.get(roomId);
-      if (clients) {
-        for (const clientId of clients) {
-          const s = io.sockets.sockets.get(clientId);
-          if (s) s.leave(roomId);
-        }
-      }
-      activeRooms.delete(roomId);
-    }
-  });
-
-  // driver socket handlers can go here
-  // Only drivers emit this event
-  socket.on('driver:location', async ({ driverId, lat, lng, ts }: { driverId: string, lat: number, lng: number, ts?: number }) => {
-    if (!driverId || typeof lat !== 'number' || typeof lng !== 'number') return;
-    console.log(`Received location from driver ${driverId}: (${lat}, ${lng}) at ${ts || Date.now()}`);
-    // Optional: save to MongoDB
-    try {
-      // Update the ride's last known location
-      const updatedRide = await Ride.updateMany(
-        { driverId },
-        { $set: { lastDriverLocation: { lat, lng, ts: ts || Date.now() } } }
-      );
-      if (!updatedRide) {
-        console.log("No ride found for driver:", driverId);
-      }
-      console.log("Updated Ride:", updatedRide);
-      // Update the driver's current location
-      await DriverUser.findByIdAndUpdate(driverId, {
-        $set: {
-          currentLoc: { lat, lng },
-          updatedAt: new Date()
-        }
-      });
-
-
-    } catch (err) {
-      console.error('Error saving driver location:', err);
-    }
-
-    // Broadcast only to admins
-    console.log(`Broadcasting driver location to ${io.sockets.sockets.size} sockets`);
-    io.emit('driver:location', { driverId, lat, lng, ts: ts || Date.now() });
-
-
-  });
-  //// driver socket handlers ends here
-
-  socket.on('disconnect', () => {
-    console.log('Socket disconnected', socket.id);
-
-    for (const [userId, val] of pendingChats.entries()) {
-      if (val.socketId === socket.id) {
-        pendingChats.delete(userId);
-        io.sockets.sockets.forEach((s) => {
-          if (s.data && s.data.isAdmin) s.emit('removePending', { userId });
-        });
-      }
-    }
-
-    for (const [roomId, val] of activeRooms.entries()) {
-      if (val.userSocketId === socket.id || val.adminSocketId === socket.id) {
-        io.to(roomId).emit('chatEnded', { roomId, by: 'disconnect' });
-        activeRooms.delete(roomId);
-      }
-    }
-  });
+  }
 });
 
-app.use('/api/faq', faqRoutes);
-
-const MONGO_URI = process.env.MONGO_URI;
-
-if (!MONGO_URI) {
-  console.error("MONGO_URI is not defined in the environment variables");
-  process.exit(1);
-}
-
-mongoose.connect(MONGO_URI)
-  .then(() => {
-    console.log('MongoDB connected');
-    // Start the combined HTTP & Socket.IO server instead of app.listen()
-    server.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-    });
-  })
-  .catch((err) => console.error(err));

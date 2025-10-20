@@ -1,5 +1,5 @@
 import express, { Request, Response } from 'express';
-import localFaqs from '../data/faq.json';
+import localFaqs from '../../data/faq.json';
 
 const router = express.Router();
 

@@ -1,17 +1,16 @@
 import { Request, Response } from 'express';
-import AdminUser, { IAdminUser } from '../models/AdminUser';
+import AdminUser, { IAdminUser } from './AdminUser';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import DriverUser, { DriverRideStatus, IDriverUser } from '../models/DriverUserAccounts';
-import Ride, { IRide } from '../models/Rides';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key';
+
 
 // Signup controller
 export const signup = async (req: Request, res: Response) => {
     try {
         const { firstName, lastName, email, password, phone } = req.body;
-
+ 
         // Check if user already exists
         const existingUser: IAdminUser | null = await AdminUser.findOne({ email });
         if (existingUser) {
@@ -116,63 +115,4 @@ export const logout = (req: Request, res: Response) => {
     });
 
     res.status(200).json({ message: 'Logged out successfully' });
-};
-
-export const assign = async (req: Request, res: Response) => {
-    try {
-        const {
-            adminId,
-            driverId,
-            rideStartAt,
-            rideEndAt,
-            isRideStarted,
-            isRideEnded,
-            date,
-            distance,
-            leg,
-            lastDriverLocation,
-            route
-        } = req.body;
-
-        const newRide: IRide = new Ride({
-            adminId,
-            driverId,
-            rideStartAt,
-            rideEndAt,
-            isRideStarted,
-            isRideEnded,
-            date,
-            distance,
-            leg,
-            lastDriverLocation,
-            route
-        });
-
-        await newRide.save();
-
-        return res.status(200).json({
-            ride: newRide,
-            message: 'Ride assigned successfully'
-        });
-
-    } catch (error) {
-        console.error('Error assigning driver:', error);
-        return res.status(500).json({ message: 'Server error' });
-    }
-};
-
-export const getAllRides = async (req: Request, res: Response) => {
-    const adminId = req.params.adminId;
-    console.log('Fetching rides for adminId:', adminId);
-    try {
-        const rides: IRide[] = await Ride.find({ adminId: adminId });
-        if (!rides || rides.length === 0) {
-            return res.status(404).json({ message: 'No rides found for this admin' });
-        }
-
-        res.status(200).json({ rides });
-    } catch (error) {
-        console.error('Error fetching rides:', error);
-        res.status(500).json({ message: 'Server error' });
-    }
 };
