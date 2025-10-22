@@ -34,7 +34,7 @@ app.post("/api/send-email", async (req: Request, res: Response) => {
 
   try {
     const data = await resend.emails.send({
-      from: "Delivery System <onboarding@resend.dev>", // or use your verified domain
+      from: '"Delivery System" <rajcompany1kl@gmail.com>', // or use your verified domain
       to,
       subject,
       text,
