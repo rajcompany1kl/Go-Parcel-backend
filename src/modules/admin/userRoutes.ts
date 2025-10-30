@@ -1,5 +1,5 @@
 import express from 'express';
-import {  assign, getAllRides } from './UserController';
+import {  assign, endDelivery, getAllRides } from './UserController';
 import { signup, login, logout } from './AuthController';
 
 const router = express.Router();
@@ -10,5 +10,6 @@ router.post('/login', login);
 router.post('/logout', logout);
 router.post('/assign', assign);
 router.get('/rides/:adminId', getAllRides);
+router.post('/endRide',endDelivery)
 
 export default router;

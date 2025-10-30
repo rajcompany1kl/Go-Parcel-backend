@@ -9,7 +9,7 @@ const activeRooms = new Map<string, { userSocketId: string, adminSocketId: strin
 export const initSocket = (io: Server) => {
   io.on('connection', (socket: Socket) => {
 
-  socket.on('registerAsAdmin', async ({ adminId, adminName } = {}) => {
+  socket.on('registerAsAdmin', async ({ adminId, adminName }: {adminId: string, adminName: string}) => {
     socket.data.isAdmin = true;
     socket.data.adminId = adminId || `admin-${socket.id}`;
     socket.data.adminName = adminName || 'Admin';

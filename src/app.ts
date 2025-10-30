@@ -1,7 +1,7 @@
 import express, { Request, Response } from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
-import dotenv from "dotenv";
+import * as dotenv from "dotenv";
 import routes from "./routes/index";
 import { Resend } from "resend";
 import nodemailer from "nodemailer";
@@ -9,8 +9,6 @@ import nodemailer from "nodemailer";
 dotenv.config();
 
 const app = express();
-
-
 
 app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:5173',

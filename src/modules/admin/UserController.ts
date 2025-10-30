@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
 import Ride, { IRide } from '../ride/Rides';
+import DriverUserAccounts, { DriverRideStatus } from '../driver/DriverUserAccounts';
+import moment from 'moment';
 
 export const assign = async (req: Request, res: Response) => {
     try {
@@ -30,7 +32,10 @@ export const assign = async (req: Request, res: Response) => {
             lastDriverLocation,
             route
         });
-
+        await DriverUserAccounts.updateOne(
+            { _id: driverId },
+            { $set: { status: DriverRideStatus.NOT_AVAILABLE } }
+        );
         await newRide.save();
 
         return res.status(200).json({
@@ -59,3 +64,28 @@ export const getAllRides = async (req: Request, res: Response) => {
         res.status(500).json({ message: 'Server error' });
     }
 };
+
+export const endDelivery = async (req: Request, res: Response) => {
+    const { driverId } = req.body
+    console.log('Ending ride for driverId:', driverId);
+    try {
+        const ride  = await Ride.findOne({ driverId: driverId, isRideEnded: false });
+        if (!ride) {
+            return res.status(404).json({ message: 'Ride not found' });
+        }
+        ride.isRideEnded = true;
+        ride.rideEndAt = moment().valueOf();
+        await ride.save();
+
+        // make the driver available again
+        const driver = await DriverUserAccounts.findById(ride.driverId);
+        if (driver) {
+            driver.status = DriverRideStatus.AVAILABLE;
+            await driver.save();
+        }
+
+        res.status(200).json({ message: 'Ride ended successfully', ride, success: true });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error' });
+    }
+}
