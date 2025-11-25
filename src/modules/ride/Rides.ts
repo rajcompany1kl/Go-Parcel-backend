@@ -18,6 +18,9 @@ export interface Route {
 
 export interface IRide extends Document {
     adminId: string;
+    recieverName: string;
+    recieverPhone: string;
+    itemDescription: string;
     driverId: string;
     rideStartAt: number;
     rideEndAt?: number;
@@ -33,6 +36,9 @@ export interface IRide extends Document {
 const RideSchema: Schema<IRide> = new Schema({
     adminId: { type: String, ref: 'AdminUser', required: true },
     driverId: { type: String, ref: 'DriverUser', required: true },
+    recieverName: { type: String},
+    recieverPhone: { type: String},
+    itemDescription: { type: String},
     rideStartAt: { type: Number, required: true },
     rideEndAt: { type: Number },
     isRideStarted: { type: Boolean, default: false },

@@ -27,22 +27,36 @@ app.get("/", (req: Request, res: Response) => {
 // initialize resend client
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-app.post("/api/send-email", async (req: Request, res: Response) => {
+app.post("/api/send-email", async (req, res) => {
   const { to, subject, text } = req.body;
 
+  if (!to || !subject || !text) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+
   try {
-    const data = await resend.emails.send({
-      from: '"Delivery System" <rajcompany1kl@gmail.com>', // or use your verified domain
+    const emailResponse = await resend.emails.send({
+      from: "Delivery System <onboarding@resend.dev>", 
+      // ✔ MUST be Resend address or your verified domain
       to,
       subject,
       text,
     });
 
-    console.log("Email sent:", data);
-    res.status(200).json({ message: "Email sent successfully" });
-  } catch (err) {
-    console.error("Email send failed:", err);
-    res.status(500).json({ error: "Email failed to send" });
+    console.log("📧 Email sent:", emailResponse);
+
+    return res.status(200).json({
+      success: true,
+      message: "Email sent successfully",
+      data: emailResponse,
+    });
+  } catch (error: any) {
+    console.error("❌ Email send failed:", error);
+
+    return res.status(500).json({
+      success: false,
+      error: error?.message || "Email failed to send",
+    });
   }
 });
 // Register all routes

@@ -8,6 +8,9 @@ export const assign = async (req: Request, res: Response) => {
         const {
             adminId,
             driverId,
+            recieverName,
+            recieverPhone,
+            itemDescription,
             rideStartAt,
             rideEndAt,
             isRideStarted,
@@ -22,6 +25,9 @@ export const assign = async (req: Request, res: Response) => {
         const newRide: IRide = new Ride({
             adminId,
             driverId,
+            recieverName,
+            recieverPhone,
+            itemDescription,
             rideStartAt,
             rideEndAt,
             isRideStarted,
@@ -37,7 +43,7 @@ export const assign = async (req: Request, res: Response) => {
             { $set: { status: DriverRideStatus.NOT_AVAILABLE } }
         );
         await newRide.save();
-
+        console.log("ride saved",newRide)
         return res.status(200).json({
             ride: newRide,
             message: 'Ride assigned successfully'

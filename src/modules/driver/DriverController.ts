@@ -39,7 +39,7 @@ export const getDriverDelivery = async (req: Request, res: Response) => {
     const driverId = req.params.driverId;
     console.log('Fetching delivery for driverId:', driverId);
     try {
-        const delivery = await Rides.findOne({ driverId });
+        const delivery = await Rides.findOne({ driverId , isRideEnded: false});
         if (!delivery) {
             return res.status(404).json({ message: 'No delivery found for this driverId' });
         }
